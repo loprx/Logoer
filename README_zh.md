@@ -28,7 +28,16 @@
 - macOS 11.0 及更高版本  
 
 ### 安装:
-可[点此前往](../../releases/latest)下载最新版安装文件, 或从源码构建 (见下方"构建").
+可[点此前往](../../releases/latest)下载最新版安装文件, 或使用 Homebrew:
+
+```bash
+brew install --cask loprx/tap/logoer
+```
+
+包内为 ad-hoc 签名的 arm64 版本, 首次启动若被系统拦截, 请在
+系统设置 → 隐私与安全性 中选择"仍要打开".
+
+也可以从源码构建 (见下方"构建").
 
 ## 构建
 ### 仅使用 Command Line Tools

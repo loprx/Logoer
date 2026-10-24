@@ -29,8 +29,16 @@ Changes over upstream 0.2.2:
 - macOS 11.0 and Later  
 
 ### Installation:
-Download the latest installation file [here](../../releases/latest), or build from source
-(see [Building](#building)).
+Download the latest installation file [here](../../releases/latest), or use Homebrew:
+
+```bash
+brew install --cask loprx/tap/logoer
+```
+
+The bundled app is ad-hoc signed and arm64-only. If macOS blocks the first launch,
+allow it under System Settings → Privacy & Security → Open Anyway.
+
+You can also build from source (see [Building](#building)).
 
 ## Building
 ### Command Line Tools only
