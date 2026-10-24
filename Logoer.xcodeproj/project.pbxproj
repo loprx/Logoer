@@ -17,6 +17,8 @@
 		182AC4D82C498DF200CF1790 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 182AC4D72C498DF200CF1790 /* Assets.xcassets */; };
 		182AC4E12C498EFB00CF1790 /* LogoerHelper.app in CopyFiles */ = {isa = PBXBuildFile; fileRef = 182AC4D12C498DF100CF1790 /* LogoerHelper.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		182AC4E42C49953300CF1790 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 182AC4E22C49953300CF1790 /* Localizable.strings */; };
+		1A2B3C4D5E6F708192A3B403 /* battery_tux.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B401 /* battery_tux.svg */; };
+		1A2B3C4D5E6F708192A3B404 /* battery_win.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B402 /* battery_win.svg */; };
 		182AC4E82C499CA900CF1790 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 182AC4E72C499CA900CF1790 /* Sparkle */; };
 		182AC4EB2C499D5100CF1790 /* Sparkle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182AC4EA2C499D5100CF1790 /* Sparkle.swift */; };
 		18747AD72C4FF36C006FC3B5 /* SDWebImageSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 18747AD62C4FF36C006FC3B5 /* SDWebImageSwiftUI */; };
@@ -51,6 +53,8 @@
 		182AC4D72C498DF200CF1790 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		182AC4DC2C498DF200CF1790 /* LogoerHelper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LogoerHelper.entitlements; sourceTree = "<group>"; };
 		182AC4E52C49954700CF1790 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B401 /* battery_tux.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_tux.svg; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3B402 /* battery_win.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_win.svg; sourceTree = "<group>"; };
 		182AC4E92C499CC400CF1790 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		182AC4EA2C499D5100CF1790 /* Sparkle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sparkle.swift; sourceTree = "<group>"; };
 		18E77B932C5E9913008E1326 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
@@ -106,6 +110,8 @@
 				18E77B932C5E9913008E1326 /* InfoButton.swift */,
 				182AC4EA2C499D5100CF1790 /* Sparkle.swift */,
 				182AC4C02C49611100CF1790 /* Assets.xcassets */,
+				1A2B3C4D5E6F708192A3B401 /* battery_tux.svg */,
+				1A2B3C4D5E6F708192A3B402 /* battery_win.svg */,
 				182AC4E22C49953300CF1790 /* Localizable.strings */,
 				182AC4C52C49611100CF1790 /* Logoer.entitlements */,
 				182AC4C22C49611100CF1790 /* Preview Content */,
@@ -224,6 +230,8 @@
 				182AC4C42C49611100CF1790 /* Preview Assets.xcassets in Resources */,
 				182AC4E42C49953300CF1790 /* Localizable.strings in Resources */,
 				182AC4C12C49611100CF1790 /* Assets.xcassets in Resources */,
+				1A2B3C4D5E6F708192A3B403 /* battery_tux.svg in Resources */,
+				1A2B3C4D5E6F708192A3B404 /* battery_win.svg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -400,7 +408,7 @@
 				CODE_SIGN_ENTITLEMENTS = Logoer/Logoer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 022;
+				CURRENT_PROJECT_VERSION = 030;
 				DEVELOPMENT_ASSET_PATHS = "\"Logoer/Preview Content\"";
 				DEVELOPMENT_TEAM = L4T783637F;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -408,13 +416,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Logoer/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 lihaoyun6. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 lihaoyun6. Fork maintained at github.com/loprx/Logoer.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 0.2.2;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lihaoyun6.Logoer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -430,7 +438,7 @@
 				CODE_SIGN_ENTITLEMENTS = Logoer/Logoer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 022;
+				CURRENT_PROJECT_VERSION = 030;
 				DEVELOPMENT_ASSET_PATHS = "\"Logoer/Preview Content\"";
 				DEVELOPMENT_TEAM = L4T783637F;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -438,13 +446,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Logoer/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 lihaoyun6. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 lihaoyun6. Fork maintained at github.com/loprx/Logoer.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 0.2.2;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lihaoyun6.Logoer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

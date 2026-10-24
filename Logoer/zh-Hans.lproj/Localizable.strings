@@ -15,6 +15,8 @@
 "Aqua Apple" = "蓝色玻璃";
 "Rainbow Apple" = "经典彩虹";
 "*Battery Indicator" = "*电量指示器";
+"*Battery: Linux" = "*电量指示器 (Linux)";
+"*Battery: Windows" = "*电量指示器 (Windows)";
 "*Custom Color" = "*自定义颜色";
 "*Custom Emoji" = "*自定义 Emoji";
 "*Custom Image" = "*自定义图像";
@@ -41,3 +43,4 @@
 "Automatically capture the color of the menu bar and cover the system default Logo." = "自动捕获菜单栏的颜色并遮盖住系统默认的 Apple Logo";
 "When Logoer is running, you can run it again to bring up the settings panel." = "当 Logger 正在运行的时候\n再次从访达中运行它就可以唤起设置面板";
 "Enabling \"Visible in Full Screen Mode\" will keep the logo visible in full screen mode." = "在设置中启用 \"在全屏模式下保持可见\"\n将会使自定义 logo 在全屏模式下不被隐藏";
+"This logo style has to cover the system Apple logo, which needs Screen Recording permission to read the menu bar colour. Allow it in System Settings → Privacy & Security → Screen & System Audio Recording and the logo will fix itself." = "该图标样式需要遮盖系统自带的 Apple 标志，因此需要「屏幕录制」权限来读取菜单栏颜色。\n请在 系统设置 → 隐私与安全性 → 屏幕与系统音频录制 中允许 Logoer，随后图标会自动恢复正常。";

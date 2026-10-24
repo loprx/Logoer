@@ -47,14 +47,23 @@ struct SettingsView: View {
                     Text("Aqua Apple").tag("aqua")
                     Text("*Frontmost App Icon").tag("appicon")
                     Text("*Battery Indicator").tag("battery")
+                    Text("*Battery: Linux").tag("battery_tux")
+                    Text("*Battery: Windows").tag("battery_win")
                     Text("*Custom Color").tag("color")
                     Text("*Custom Emoji").tag("emoji")
                     Text("*Custom Image").tag("custom")
                 }
-                .onChange(of: logoStyle) { _ in createLogo() }
+                .onChange(of: logoStyle) { newValue in
+                    // A non-Apple silhouette cannot hide the system Apple menu glyph on
+                    // its own; Auto-Mask paints the menu-bar colour over it. Turn it on
+                    // here (and ask for Screen Recording once) rather than leaving the
+                    // user with a penguin next to an Apple.
+                    enableAutoMaskIfNeeded(for: newValue)
+                    createLogo()
+                }
                 if logoStyle == "color" {
                     ColorPicker("", selection: $userColor)
-                } else if logoStyle == "battery" {
+                } else if logoStyle == "battery" || logoStyle == "battery_tux" || logoStyle == "battery_win" {
                     ColorPicker("Background:", selection: $batteryColor)
                 } else if logoStyle == "appicon" {
                     Picker("Stroke:", selection: $iconStroke) {
@@ -104,7 +113,15 @@ struct SettingsView: View {
                 HStack(spacing: 2) {
                     Toggle("Auto-Mask", isOn: $maskMode)
                         .toggleStyle(.checkbox)
-                        .onChange(of: maskMode) { newValue in if newValue { refeshMask() }}
+                        .onChange(of: maskMode) { newValue in
+                            if newValue {
+                                // Explicit user action, so asking here is expected: one
+                                // dialog. If it is declined the timer just keeps re-checking
+                                // without capturing, instead of re-prompting forever.
+                                _ = requestScreenCaptureAccess()
+                                refeshMask()
+                            }
+                        }
                     SWInfoButton(showOnHover: false, fillMode: true, animatePopover: true, content: "Automatically capture the color of the menu bar and cover the system default Logo.".local, primaryColor: NSColor.controlAccentColor)
                         .frame(width: 19, height: 19)
                 }

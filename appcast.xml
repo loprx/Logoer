@@ -1,4 +1,17 @@
 <?xml version="1.0" standalone="yes"?>
+<!--
+  Fork note (loprx/Logoer): this file was inherited from upstream lihaoyun6/Logoer
+  and its enclosures are still upstream DMGs signed with upstream's EdDSA key, which
+  matches the SUPublicEDKey still embedded in Logoer/Info.plist. Because the latest
+  entry (022) is older than this fork's build number, no update is ever offered.
+
+  Before publishing a release from this fork:
+    1. `swift build` then run Sparkle's `generate_keys` to create a fork keypair.
+    2. Put the new public key in Logoer/Info.plist (SUPublicEDKey).
+    3. Add a new <item> here with the fork's DMG URL and its signature.
+  Deleting the upstream items without doing the above is safe (the updater simply
+  goes quiet) but leaves users of older upstream builds on a dead feed.
+-->
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>Logoer</title>

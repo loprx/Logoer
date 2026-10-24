@@ -64,13 +64,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         deviceType = getMacDeviceType()
         if #available(macOS 14, *) { aboveSonoma = true }
         if #available(macOS 15, *) { aboveSequoia = true }
+        adoptAutoMaskSilentlyIfPossible(for: logoStyle)
         refeshMask()
         createLogo()
         CGDisplayRegisterReconfigurationCallback(displayReconfigurationCallback, nil)
         NC.addObserver(self, selector: #selector(onDisplayWake), name: NSWorkspace.screensDidWakeNotification, object: nil)
         NC.addObserver(self, selector: #selector(didActivateApplication(_:)), name: NSWorkspace.didActivateApplicationNotification, object: nil)
-        tips(id: "logoer.first-start.note", text: "When Logoer is running, you can run it again to bring up the settings panel.")
-        tips(id: "logoer.full-screen.note", text: "Enabling \"Visible in Full Screen Mode\" will keep the logo visible in full screen mode.")
+
+        // Nothing on screen advertises how to reach the settings panel, so on the very
+        // first launch show it outright instead of relying on the tips to explain the
+        // "run it again" trick.
+        let isFirstLaunch = !ud.bool(forKey: "hasLaunchedBefore")
+        ud.set(true, forKey: "hasLaunchedBefore")
+        if isFirstLaunch { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { showSettings() } }
+
+        // Queue the tips after the panel so they stack on top of it instead of
+        // fighting it for the key window.
+        DispatchQueue.main.asyncAfter(deadline: .now() + (isFirstLaunch ? 1.0 : 0)) {
+            tips(id: "logoer.first-start.note", text: "When Logoer is running, you can run it again to bring up the settings panel.")
+            tips(id: "logoer.full-screen.note", text: "Enabling \"Visible in Full Screen Mode\" will keep the logo visible in full screen mode.")
+        }
     }
     
     func applicationWillTerminate(_ aNotification: Notification) {
@@ -81,16 +94,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         createLogo()
         NSApp.activate(ignoringOtherApps: true)
-        if #available(macOS 14, *) {
-            NSApp.mainMenu?.items.first?.submenu?.item(at: 2)?.performAction()
-        }else if #available(macOS 13, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NSApp.windows.first(where: { $0.title != "logo" })?.level = .floating
-        }
+        showSettings()
         return true
     }
     
@@ -106,6 +110,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// Looks up a logo image in both build flavours.
+///
+/// Xcode's `actool` compiles `Assets.xcassets` into `Assets.car`; the Command Line
+/// Tools build has no `actool`, so it ships the same artwork as loose files in
+/// `Contents/Resources`. `Image("name")` only consults the asset catalog — it does
+/// **not** fall back to loose bundle resources (verified on macOS 26) — while
+/// `NSImage(named:)` checks both. Route every logo image through here.
+///
+/// `template` mirrors `template-rendering-intent` from the imageset: pass true only
+/// for monochrome silhouettes meant to be tinted with `foregroundColor`.
+func logoImage(_ name: String, template: Bool = false) -> Image {
+    guard let image = NSImage(named: name) else { return Image(name) }
+    image.isTemplate = template
+    return Image(nsImage: image).renderingMode(template ? .template : .original)
+}
+
+/// Same idea for colors: `Color("my_green")` needs the asset catalog. Without
+/// `actool` the four battery colors fall back to the exact display-P3 values from
+/// their colorsets in `Assets.xcassets`.
+func logoColor(_ name: String) -> Color {
+    if #available(macOS 12, *), let color = NSColor(named: name) { return Color(nsColor: color) }
+    func p3(_ r: Int, _ g: Int, _ b: Int) -> Color {
+        Color(.displayP3, red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255)
+    }
+    switch name {
+    case "my_green": return p3(0x4E, 0xCE, 0x51)
+    case "my_red": return p3(0xEA, 0x4E, 0x3D)
+    case "my_yellow": return p3(0xFF, 0xB8, 0x00)
+    default: return p3(0x99, 0x99, 0x99)
+    }
+}
+
 func getIcon(app: NSRunningApplication?) -> NSImage {
     if let app = app, let path = app.bundleURL?.path {
         if let rep = NSWorkspace.shared.icon(forFile: path)
@@ -117,7 +153,7 @@ func getIcon(app: NSRunningApplication?) -> NSImage {
             return NSWorkspace.shared.icon(forFile: path)
         }
     }
-    return NSImage.appiconBack
+    return NSImage(named: "appicon_back") ?? NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
 }
 
 func displayReconfigurationCallback(display: CGDirectDisplayID, flags: CGDisplayChangeSummaryFlags, userInfo: UnsafeMutableRawPointer?) {
@@ -125,26 +161,93 @@ func displayReconfigurationCallback(display: CGDirectDisplayID, flags: CGDisplay
     createLogo()
 }
 
+/// Auto-Mask reads the menu-bar colour by shelling out to `screencapture`, which needs
+/// Screen Recording permission (shown as "Screen & System Audio Recording" on macOS 15+).
+///
+/// That permission is granted to the app's code identity, and an ad-hoc signed
+/// development build gets a new identity on every rebuild — so the grant is lost each
+/// time. The important part: *every* capture attempted without a grant makes macOS raise
+/// the system dialog again, and `refeshMask()` is called from a timer every
+/// `maskInterval` seconds. Capturing blindly therefore re-prompted forever. Ask once at
+/// launch instead, and never attempt a capture while the answer is "no".
+func hasScreenCaptureAccess() -> Bool {
+    CGPreflightScreenCaptureAccess()
+}
+
+@discardableResult
+func requestScreenCaptureAccess() -> Bool {
+    if CGPreflightScreenCaptureAccess() { return true }
+    return CGRequestScreenCaptureAccess()
+}
+
 func refeshMask() {
     @AppStorage("maskMode") var maskMode: Bool = false
     if !maskMode { return }
+    // Never attempt a capture we are not allowed to make: the attempt itself is what
+    // re-opens the system permission dialog, and this runs on a timer. Without the
+    // grant, fall back to the last captured mask on disk — it is only wrong after a
+    // light/dark switch, which is better than an uncovered system Apple logo.
+    let canCapture = hasScreenCaptureAccess()
     var masks = [maskImage]()
     let screens = NSScreen.screens
     for index in screens.indices {
         let screen = screens[index]
-        let origin = getOrigin(of: screen, in: screens)
         let maskURL = getMaskURL(index: index)
-        _ = process(path: "/usr/sbin/screencapture", arguments: ["-x", "-R", "\(origin.x),\(origin.y),4,4", maskURL.path])
+        if canCapture {
+            // Sample 10pt inboard of the screen's top-left. The exact corner is where the
+            // display rounds off its corners: on the secondary display it reads the black
+            // behind the rounding (28,28,28) instead of the menu bar (38,41,43), and the
+            // mask then paints a visibly wrong rectangle. 10pt is inside every menu bar
+            // and outside every corner radius.
+            let origin = getOrigin(of: screen, in: screens)
+            let sample = CGPoint(x: origin.x + 10, y: origin.y + 10)
+            _ = process(path: "/usr/sbin/screencapture", arguments: ["-x", "-R", "\(Int(sample.x)),\(Int(sample.y)),4,4", maskURL.path])
+        }
         if let image = NSImage(contentsOf: maskURL) { masks.append(maskImage(url: maskURL, image: image)) }
     }
     dataModel.masks = masks
+}
+
+/// Styles drawn on the Apple silhouette. macOS keeps drawing its own Apple menu glyph
+/// behind our overlay window; an Apple-shaped style hides it by painting over the same
+/// shape in the same place. Any other style (penguin, window, emoji, app icon, custom
+/// image) leaves the system Apple visible in the gaps — that is why "Battery: Linux"
+/// showed a penguin *and* an Apple. Auto-Mask is what paints the menu-bar colour over
+/// the system glyph, so the non-Apple styles need it enabled to render correctly.
+let appleShapedLogoStyles: Set<String> = ["rainbow", "chrome", "glass", "aqua", "battery", "color"]
+
+/// Enable Auto-Mask and ask for the Screen Recording permission it needs, once, at the
+/// moment the user picks a style that cannot work without it. Called from the picker
+/// only: asking on a plain launch would be an unexplained permission prompt.
+func enableAutoMaskIfNeeded(for style: String) {
+    @AppStorage("maskMode") var maskMode = false
+    if appleShapedLogoStyles.contains(style) || maskMode { return }
+    maskMode = true
+    if requestScreenCaptureAccess() {
+        refeshMask()
+    } else {
+        tips(id: "logoer.screen-recording.note",
+             text: "This logo style has to cover the system Apple logo, which needs Screen Recording permission to read the menu bar colour. Allow it in System Settings → Privacy & Security → Screen & System Audio Recording and the logo will fix itself.")
+    }
+}
+
+/// Same idea for a style restored from preferences at launch (or set via `defaults
+/// write`): switch the mask on without prompting when the permission is already there.
+/// If it is not, leave the setting alone — a permission dialog on launch would be
+/// unexplained, and the picker asks properly when the user next changes style.
+func adoptAutoMaskSilentlyIfPossible(for style: String) {
+    @AppStorage("maskMode") var maskMode = false
+    if appleShapedLogoStyles.contains(style) || maskMode { return }
+    guard hasScreenCaptureAccess() else { return }
+    maskMode = true
+    refeshMask()
 }
 
 func createLogo(noCache: Bool = false) {
     @AppStorage("logoStyle") var logoStyle = "rainbow"
     print("refesh logo at: \(Date())")
     for w in NSApp.windows.filter({ $0.title == "logo" }) { w.close() }
-    
+
     if noCache {
         SDImageCache.shared.clearMemory()
         SDImageCache.shared.clearDisk()
@@ -172,20 +275,50 @@ func createLogo(noCache: Bool = false) {
     }
 }
 
+// Private CoreGraphics "Spaces" API. We ask the window server which displays are
+// currently showing a native full-screen Space. This is the only reliable signal:
+// on notched Macs a full-screen window's bounds are identical to a merely *maximized*
+// window's (both render below the notch), so comparing window rectangles can never
+// tell full screen from maximized. Asking about the Space type sidesteps that entirely,
+// works for any app, and is per-display.
+typealias CGSConnectionID = UInt32
+@_silgen_name("_CGSDefaultConnection")
+func _CGSDefaultConnection() -> CGSConnectionID
+@_silgen_name("CGSCopyManagedDisplaySpaces")
+func CGSCopyManagedDisplaySpaces(_ cid: CGSConnectionID) -> Unmanaged<CFArray>
+
+// CGS reports a native full-screen Space with type == 4.
+private let kCGSSpaceTypeFullscreen = 4
+
+// Stable UUID string for a screen, used to match an NSScreen to a CGS managed display.
+func screenUUID(_ screen: NSScreen) -> String? {
+    guard let num = screen.deviceDescription[NSDeviceDescriptionKey(rawValue: "NSScreenNumber")] as? NSNumber,
+          let cf = CGDisplayCreateUUIDFromDisplayID(CGDirectDisplayID(num.uint32Value))?.takeRetainedValue()
+    else { return nil }
+    return CFUUIDCreateString(nil, cf) as String
+}
+
 func getFullScreens() {
-    var screenList = [NSRect]()
-    if let windows = CGWindowListCopyWindowInfo([.excludeDesktopElements, .optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] {
-        for window in windows {
-            if getOwner(window) == "SystemUIServer" { continue }
-            if let level = window[kCGWindowLayer as String] as? Int { if level != 0 { continue } }
-            if let bounds = window[kCGWindowBounds as String] as? [String: CGFloat] {
-                let windowRect = CGRect(x: bounds["X"] ?? 0, y: bounds["Y"] ?? 0, width: bounds["Width"] ?? 0, height: bounds["Height"] ?? 0)
-                for screen in NSScreen.screens {
-                    if windowRect.equalTo(screen.frame) { screenList.append(screen.frame) }
-                }
-            }
+    // Which displays currently show a native full-screen Space?
+    var fullScreenDisplayIDs = Set<String>()
+    if let displays = CGSCopyManagedDisplaySpaces(_CGSDefaultConnection()).takeRetainedValue() as? [[String: Any]] {
+        for display in displays {
+            guard let id = display["Display Identifier"] as? String,
+                  let current = display["Current Space"] as? [String: Any],
+                  let type = current["type"] as? Int else { continue }
+            if type == kCGSSpaceTypeFullscreen { fullScreenDisplayIDs.insert(id) }
         }
     }
+
+    // Map those displays back to NSScreen frames (the unit ContentView compares against).
+    // "Main" is accepted as a fallback identifier for the primary display on some macOS versions.
+    var screenList = [NSRect]()
+    for screen in NSScreen.screens {
+        let matchesUUID = screenUUID(screen).map { fullScreenDisplayIDs.contains($0) } ?? false
+        let matchesMain = fullScreenDisplayIDs.contains("Main") && screen.isMainScreen
+        if matchesUUID || matchesMain { screenList.append(screen.frame) }
+    }
+
     if screenList != dataModel.fullScreens {
         if screenList.count < dataModel.fullScreens.count {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -195,19 +328,6 @@ func getFullScreens() {
         }
         dataModel.fullScreens = screenList
     }
-}
-
-func getOwner(_ w: [String: Any]) -> String {
-    let name = w["kCGWindowOwnerName"] as? String ?? ""
-    if name.contains("pid=") {
-        guard let pid = w["kCGWindowOwnerPID"] as? Int else { return "" }
-        for app in NSWorkspace.shared.runningApplications {
-            if let name = app.localizedName, app.processIdentifier == pid {
-                return name
-            }
-        }
-    }
-    return name
 }
 
 func getOrigin(of screen: NSScreen, in screens: [NSScreen]) -> NSPoint {
@@ -229,12 +349,153 @@ func getMaskURL(index: Int) -> URL {
     return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("mask\(index).png")
 }
 
-func tips(id: String, text: String) {
-    let never = UserDefaults.standard.object(forKey: "neverRemindMe") as? [String] ?? []
-    if !never.contains(id) {
-        let alert = createAlert(title: "Logoer Tips".local, message: text.local, button1: "Don't remind me again", button2: "OK")
-        if alert.runModal() == .alertFirstButtonReturn { UserDefaults.standard.setValue(never + [id], forKey: "neverRemindMe") }
+// Identifier AppKit gives to the window backing SwiftUI's `Settings` scene.
+private let settingsWindowID = "com_apple_SwiftUI_Settings_window"
+
+private func settingsWindow() -> NSWindow? {
+    // Exclude panels (our tips alerts are `NSPanel`s) and the logo overlays, or the
+    // alert ends up being raised instead of the settings window.
+    let candidates = NSApp.windows.filter { !$0.isKind(of: NSPanel.self) && $0.level != .statusBar }
+    return candidates.first(where: { $0.identifier?.rawValue == settingsWindowID })
+        ?? candidates.first(where: { !$0.title.isEmpty })
+}
+
+/// Brings the settings window to the front no matter what state it is in.
+///
+/// The window may not exist yet (SwiftUI creates it lazily), may exist but be hidden
+/// behind other windows, or may sit on another Space. So: open it, then poll briefly
+/// and force it front — simply setting `level` is not enough on macOS 26, the window
+/// keeps `onscreen = 0` until it is explicitly ordered front and made key.
+func showSettings() {
+    if let window = settingsWindow() {
+        bringSettingsWindowFront(window)
+        return
     }
+    openSettingsWindow()
+    waitForSettingsWindow(attemptsLeft: 30, reopenAfter: 15)
+}
+
+private func openSettingsWindow() {
+    if let appMenu = NSApp.mainMenu?.items.first?.submenu {
+        // The Settings item is the one bound to ⌘, — matching that way survives
+        // localization. Its action is SwiftUI-private (`menuAction:`), so there is
+        // no stable selector to match on.
+        if let item = appMenu.items.first(where: {
+            $0.keyEquivalent == "," && $0.keyEquivalentModifierMask.contains(.command)
+        }) {
+            item.performAction()
+            return
+        }
+        appMenu.item(at: 2)?.performAction()
+        return
+    }
+    if #available(macOS 13, *) {
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    } else {
+        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+    }
+}
+
+/// SwiftUI builds the settings window on the next run-loop turn, and the menu action
+/// can be a no-op if the app menu is not fully set up yet — so retry the open once
+/// before giving up.
+private func waitForSettingsWindow(attemptsLeft: Int, reopenAfter: Int) {
+    if let window = settingsWindow() {
+        bringSettingsWindowFront(window)
+        return
+    }
+    if attemptsLeft == reopenAfter {
+        openSettingsWindow()
+    }
+    guard attemptsLeft > 0 else { return }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        waitForSettingsWindow(attemptsLeft: attemptsLeft - 1, reopenAfter: reopenAfter)
+    }
+}
+
+private func bringSettingsWindowFront(_ window: NSWindow) {
+    // A saved window frame can end up entirely off-screen — the display arrangement
+    // changed, or the frame was stored while a now-disconnected monitor was attached.
+    // AppKit happily orders the window in at those coordinates and the user sees
+    // nothing, which looks exactly like "the settings panel never opens".
+    if !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(window.frame) }) {
+        let target = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame
+        if let visible = target {
+            window.setFrameOrigin(NSPoint(
+                x: visible.midX - window.frame.width / 2,
+                y: visible.midY - window.frame.height / 2))
+        }
+    }
+    // A settings window stranded on another Space or under a full-screen app is
+    // invisible even after ordering it front.
+    window.collectionBehavior.insert([.moveToActiveSpace, .fullScreenAuxiliary])
+    window.level = .floating
+    if window.isMiniaturized { window.deminiaturize(nil) }
+    if NSApp.isHidden { NSApp.unhide(nil) }
+    window.makeKeyAndOrderFront(nil)
+    window.orderFrontRegardless()
+    NSApp.activate(ignoringOtherApps: true)
+}
+
+// Tips are shown non-modally and one at a time. `NSAlert.runModal()` spins a modal
+// run loop that starves `applicationShouldHandleReopen`, so while a tip was up,
+// relaunching the app did nothing at all — which reads as "the settings panel is gone".
+final class TipCenter: NSObject {
+    static let shared = TipCenter()
+
+    private var queue = [(id: String, alert: NSAlert)]()
+    private var current: (id: String, alert: NSAlert)?
+    private var observer: NSObjectProtocol?
+
+    func enqueue(id: String, text: String) {
+        let never = UserDefaults.standard.object(forKey: "neverRemindMe") as? [String] ?? []
+        if never.contains(id) { return }
+        queue.append((id, createAlert(title: "Logoer Tips".local, message: text.local, button1: "Don't remind me again", button2: "OK")))
+        presentNext()
+    }
+
+    private func presentNext() {
+        guard current == nil, !queue.isEmpty else { return }
+        let tip = queue.removeFirst()
+        current = tip
+
+        for (index, button) in tip.alert.buttons.enumerated() {
+            button.tag = index
+            button.target = self
+            button.action = #selector(handleButton(_:))
+        }
+        // Observe rather than set `window.delegate` — NSAlert owns its window's delegate.
+        // This also covers Esc and any other dismissal, so `current` never gets stuck
+        // and blocks the remaining tips.
+        observer = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: tip.alert.window, queue: .main
+        ) { [weak self] _ in self?.tipClosed() }
+
+        tip.alert.window.level = .floating
+        tip.alert.window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func handleButton(_ sender: NSButton) {
+        guard let tip = current else { return }
+        if sender.tag == 0 {
+            var never = UserDefaults.standard.object(forKey: "neverRemindMe") as? [String] ?? []
+            never.append(tip.id)
+            UserDefaults.standard.setValue(never, forKey: "neverRemindMe")
+        }
+        tip.alert.window.close()
+    }
+
+    private func tipClosed() {
+        if let observer = observer { NotificationCenter.default.removeObserver(observer) }
+        observer = nil
+        current = nil
+        presentNext()
+    }
+}
+
+func tips(id: String, text: String) {
+    TipCenter.shared.enqueue(id: id, text: text)
 }
 
 func createAlert(level: NSAlert.Style = .warning, title: String, message: String, button1: String, button2: String = "") -> NSAlert {

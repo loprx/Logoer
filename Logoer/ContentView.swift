@@ -69,7 +69,7 @@ struct ContentView: View {
                                 .offset(y: -0.1)
                         }.frame(width: 16, height: 17)
                     } else {
-                        Image("Apple")
+                        logoImage("Apple", template: true)
                             .resizable()
                             .scaledToFit()
                             .frame(height: 17)
@@ -91,7 +91,7 @@ struct ContentView: View {
                                     .offset(x: -0.1)
                             }.frame(width: 16, height: 17)
                         } else {
-                            Image("Apple")
+                            logoImage("Apple", template: true)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(height: 17)
@@ -101,17 +101,17 @@ struct ContentView: View {
                         ZStack {
                             ZStack {
                                 if #available(macOS 14, *) {
-                                    Image("Apple_Inner_old")
+                                    logoImage("Apple_Inner_old", template: true)
                                         .resizable()
                                         .scaledToFit()
-                                        .foregroundColor(Color(model.battery.levelColor))
+                                        .foregroundColor(logoColor(model.battery.levelColor))
                                         .frame(width: 16, height: 17)
                                         .offset(x: 0.3)
                                 }
-                                Image("Apple_Inner_old")
+                                logoImage("Apple_Inner_old", template: true)
                                     .resizable()
                                     .scaledToFit()
-                                    .foregroundColor(Color(model.battery.levelColor))
+                                    .foregroundColor(logoColor(model.battery.levelColor))
                                     .frame(width: 16, height: 17)
                                     
                             }
@@ -133,10 +133,17 @@ struct ContentView: View {
                         }.needOffset(x: 0, y: -0.5)
                     }.offset(y: aboveSonoma ? -0.5 : 0)
                     .needOffset(x: -0.5, y: -0.5)
+                } else if logoStyle == "battery_tux" || logoStyle == "battery_win" {
+                    BatteryGlyph(asset: logoStyle,
+                                 color: batteryColor,
+                                 levelColor: logoColor(model.battery.levelColor),
+                                 level: model.battery.batteryLevel,
+                                 acPowered: model.battery.acPowered,
+                                 shadowON: shadowON)
                 } else if logoStyle == "rainbow" {
                     ZStack {
                         if #available(macOS 14, *) {
-                            Image("rainbow")
+                            logoImage("rainbow")
                                 .interpolation(.high)
                                 .resizable()
                                 .scaledToFit()
@@ -151,13 +158,13 @@ struct ContentView: View {
                                     }
                                 )
                         } else {
-                            Image("rainbow")
+                            logoImage("rainbow")
                                 .interpolation(.high)
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 16, height: 17)
                                 .mask (
-                                    Image("Apple")
+                                    logoImage("Apple", template: true)
                                         .resizable()
                                         .scaledToFit()
                                         .frame(height: 17)
@@ -216,7 +223,7 @@ struct ContentView: View {
                     .needOffset(x: -0.5, y: -0.5)
                     .shadow(color: Color.black.opacity(shadowON ? 0.3 : 0.0), radius: 1.5, y: 1.5)
                 } else {
-                    Image(logoStyle + (aboveSonoma ? "" : "_old"))
+                    logoImage(logoStyle + (aboveSonoma ? "" : "_old"))
                         .interpolation(.high)
                         .resizable()
                         .scaledToFit()
@@ -228,6 +235,53 @@ struct ContentView: View {
         }
         .opacity((model.fullScreens.contains(screen.frame) && !pinOnScreen) ? 0 : 1)
         .frame(width: 24, height: 24)
+    }
+}
+
+// Battery indicator over a custom silhouette (Linux Tux, Windows 10 window).
+// The outline is a filled Rectangle masked by the shape rather than
+// `Image(asset).foregroundColor(...)`: `foregroundColor` does not tint an SVG
+// that is not template-rendered (a loose resource copied into Resources), and the
+// mask approach gives the same result for either storage.
+struct BatteryGlyph: View {
+    let asset: String
+    let color: Color
+    let levelColor: Color
+    let level: Int
+    let acPowered: Bool
+    let shadowON: Bool
+
+    private var fillHeight: CGFloat {
+        level >= 20 ? max(4, CGFloat(level) / 100 * 14) : 14
+    }
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(color)
+                .mask(logoImage(asset).resizable().scaledToFit())
+                .shadow(color: Color.black.opacity(shadowON ? 0.3 : 0.0), radius: 1.5, y: 1.5)
+            Rectangle().fill(levelColor)
+                .mask(
+                    logoImage(asset).resizable().scaledToFit()
+                        .mask(
+                            VStack(spacing: 0) {
+                                Spacer(minLength: 0)
+                                Rectangle().frame(height: fillHeight)
+                            }
+                        )
+                )
+            if acPowered {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 7.5, weight: .black))
+                    .frame(width: 16, height: 16)
+                    .foregroundColor(.white)
+                    .offset(y: aboveSonoma ? 2 : 1.8)
+                    .shadow(color: .black, radius: 1)
+            }
+        }
+        .frame(width: 16, height: 16)
+        .offset(y: aboveSonoma ? -0.5 : 0)
+        .needOffset(x: -0.5, y: -0.5)
     }
 }
 
