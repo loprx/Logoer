@@ -18,6 +18,12 @@ class DataModel: ObservableObject {
     @Published var masks = [maskImage]()
     @Published var appIcon = getIcon(app: NSWorkspace.shared.frontmostApplication)
     @Published var battery = getPowerState()
+    /// Screens whose menu bar is currently drawn even though they show a full-screen
+    /// Space — the pointer was pulled to the top edge, or the user set the menu bar to
+    /// stay visible in full screen. The system Apple glyph is drawn again whenever a
+    /// screen is in this list, so the mask has to be shown with it; otherwise the
+    /// Apple shows through behind the logo.
+    @Published var revealedMenuBars = [NSRect]()
 }
 
 struct ContentView: View {
@@ -33,7 +39,13 @@ struct ContentView: View {
     @ObservedObject var model: DataModel
     var screen: NSScreen!
     var maskURL: URL!
-    
+
+    /// Whether the system Apple glyph is on screen behind us right now: always, except in
+    /// a full-screen Space whose menu bar is hidden.
+    private var maskIsNeeded: Bool {
+        !model.fullScreens.contains(screen.frame) || model.revealedMenuBars.contains(screen.frame)
+    }
+
     var body: some View {
         ZStack {
             //Color.clear
@@ -44,7 +56,12 @@ struct ContentView: View {
                     .frame(width: 24, height: screen.hasTopNotchDesign ? 23 : 24)
                     .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                     .offset(y: screen.hasTopNotchDesign ? -0.5 : 0)
-                    .opacity(model.fullScreens.contains(screen.frame) ? 0 : 1)
+                    // In a full-screen Space the system draws no Apple glyph, and the logo is
+                    // only there because "Always on Screen" is set — no mask needed. Pulling
+                    // the pointer to the top edge brings the menu bar, and with it the Apple
+                    // glyph, back; from then on the mask has to be shown or the Apple appears
+                    // behind the logo.
+                    .opacity(maskIsNeeded ? 1 : 0)
             }
             ZStack {
                 if logoStyle == "color" {

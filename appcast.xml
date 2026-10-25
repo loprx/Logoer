@@ -20,6 +20,25 @@
         <title>Logoer</title>
         <language>en</language>
         <item>
+            <title>v0.3.1</title>
+            <pubDate>Sat, 25 Oct 2026 08:05:00 +0800</pubDate>
+            <sparkle:version>031</sparkle:version>
+            <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+                  <style>ul{margin-top: 0;margin-bottom: 7;padding-left: 18;}</style><ul>
+                  <li>修复全屏时唤出菜单栏后系统苹果图标与自定义图标重叠的问题</li>
+                  <li>自动遮蔽在全屏菜单栏隐藏时不再误采样应用内容</li>
+                  <li>菜单栏唤出时遮罩出现更快</li>
+                  </ul><ul>
+                  <li>Fixed the system Apple logo overlapping the custom logo when the menu bar is revealed in full screen</li>
+                  <li>Auto-Mask no longer samples the app's own content while the full-screen menu bar is hidden</li>
+                  <li>The mask now appears faster when the menu bar is revealed</li>
+                  </ul>
+            ]]></description>
+            <enclosure url="https://github.com/loprx/Logoer/releases/download/0.3.1/Logoer-v0.3.1-macos-arm64.zip" length="1723778" type="application/octet-stream" sparkle:edSignature="hSsHYQYXtJ+nTUZehCCFKyH5KuGFVIBGOBE8YSdi3XCgMkpRXdUpBoS4u30nWENv4/5srTHHuivrHoREPlyXBQ=="/>
+        </item>
+        <item>
             <title>v0.3.0</title>
             <pubDate>Sat, 24 Oct 2026 20:30:00 +0800</pubDate>
             <sparkle:version>030</sparkle:version>

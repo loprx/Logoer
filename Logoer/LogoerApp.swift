@@ -39,7 +39,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @AppStorage("maskInterval") var maskInterval = 5
     let th = DispatchQueue.global(qos: .background)
     let NC = NSWorkspace.shared.notificationCenter
-    
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         th.async {
             while true {
@@ -50,9 +50,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         th.async {
+            var tick = 0
             while true {
-                Thread.sleep(forTimeInterval: 0.5)
-                DispatchQueue.main.async { getFullScreens() }
+                // The menu bar slides in over a full-screen Space in a fraction of a
+                // second, and the Apple glyph is drawn from the first frame. The pointer
+                // check is cheap, the CGS / window-list queries in `getFullScreens()` are
+                // not, so split them: a pointer-only check every 25 ms (about one frame,
+                // the finest this can usefully be) puts the mask up with the bar, and the
+                // full Space / status-item query runs every 0.2 s.
+                Thread.sleep(forTimeInterval: 0.025)
+                tick += 1
+                let fullCheck = tick % 8 == 0
+                DispatchQueue.main.async {
+                    if fullCheck { getFullScreens() } else { updatePointerReveal() }
+                }
             }
         }
         th.async {
@@ -190,10 +201,22 @@ func refeshMask() {
     let canCapture = hasScreenCaptureAccess()
     var masks = [maskImage]()
     let screens = NSScreen.screens
+    // Only a *drawn* menu bar is worth sampling. `revealedMenuBars` deliberately treats a
+    // pointer at the top edge as revealed so the mask is already there when the bar slides
+    // in; for a capture that is too early — the sample point still shows the app's own
+    // content, and painting that over the logo leaves a solid block. Ask for the slower,
+    // unambiguous signal instead: status items actually on screen.
+    let drawnMenuBars = revealedMenuBarScreens(in: dataModel.fullScreens, includingPointer: false)
     for index in screens.indices {
         let screen = screens[index]
         let maskURL = getMaskURL(index: index)
-        if canCapture {
+        // While a full-screen Space keeps the menu bar hidden there is nothing to cover,
+        // and what sits at the sample point is the app's own content — capturing now
+        // would overwrite a good mask with, say, the terminal's background colour. Keep
+        // the last real menu-bar mask instead; it is refreshed when the bar comes back.
+        let hiddenMenuBar = dataModel.fullScreens.contains(screen.frame)
+            && !drawnMenuBars.contains(screen.frame)
+        if canCapture && !hiddenMenuBar {
             // Sample 10pt inboard of the screen's top-left. The exact corner is where the
             // display rounds off its corners: on the secondary display it reads the black
             // behind the rounding (28,28,28) instead of the menu bar (38,41,43), and the
@@ -328,6 +351,118 @@ func getFullScreens() {
         }
         dataModel.fullScreens = screenList
     }
+
+    // A full-screen Space hides the menu bar — until the pointer is pulled to the top
+    // edge, which draws the system Apple glyph again over whatever the app is showing.
+    // Follow that state so the mask can cover the Apple while the bar is up.
+    let revealed = revealedMenuBarScreens(in: screenList)
+    if revealed != dataModel.revealedMenuBars {
+        // Compare the sets, not the counts: with two displays one bar can appear in the
+        // same tick the other hides, and equal counts would hide the fresh capture.
+        let barAppeared = revealed.contains { !dataModel.revealedMenuBars.contains($0) }
+        dataModel.revealedMenuBars = revealed
+        // Captures were skipped while the bar was hidden, so the mask on disk may be
+        // stale or missing — take a fresh one now that the menu bar is really there.
+        if barAppeared { refreshMaskOnceMenuBarLands(attemptsLeft: 8) }
+    }
+}
+
+/// Pointer-only half of `revealedMenuBarScreens`, cheap enough to run many times a second.
+///
+/// The bar starts sliding in within a frame of the pointer hitting the top edge, and the
+/// Apple is already drawn behind it — polling the Space and window list at that rate would
+/// be wasteful, so this tick only looks at the pointer. Entries are added here and removed
+/// by the full `getFullScreens()` pass, which still owns the authoritative answer.
+private func updatePointerReveal() {
+    guard !dataModel.fullScreens.isEmpty else { return }
+    let pointer = NSEvent.mouseLocation
+    let atEdge = dataModel.fullScreens.filter { frame in
+        pointer.y >= frame.maxY - 2 && pointer.x >= frame.minX && pointer.x < frame.maxX
+    }
+    guard !atEdge.isEmpty else { return }
+    var added = false
+    for frame in atEdge where !dataModel.revealedMenuBars.contains(frame) {
+        dataModel.revealedMenuBars.append(frame)
+        added = true
+    }
+    // The mask on disk was skipped while the bar was hidden, so once the bar is really
+    // drawn it has to be captured again — the full pass would normally trigger this, but
+    // it now sees the screen as already revealed.
+    if added { refreshMaskOnceMenuBarLands(attemptsLeft: 8) }
+}
+
+/// Captures are only valid once the menu bar is actually drawn: the reveal animation
+/// takes a moment, and a capture taken too early records the app's own content, which
+/// would then be painted over the Apple glyph as a solid block. Wait for the status
+/// items to be on screen (not merely for the pointer to be at the edge), and give up
+/// if the bar goes away again before it lands.
+private func refreshMaskOnceMenuBarLands(attemptsLeft: Int) {
+    guard attemptsLeft > 0 else { return }
+    if !revealedMenuBarScreens(in: dataModel.fullScreens, includingPointer: false).isEmpty {
+        refeshMask()
+        return
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+        refreshMaskOnceMenuBarLands(attemptsLeft: attemptsLeft - 1)
+    }
+}
+
+/// Which of the given full-screen displays are drawing their menu bar anyway — because
+/// the pointer reached the top edge, or because the user asked for a menu bar that stays
+/// visible in full screen?
+///
+/// There is no public API for "is the menu bar revealed", and the private SkyLight calls
+/// that sound like one (`CGSIsMenuBarVisibleOnSpace` and friends) crash when called via
+/// `dlsym`. What does change is Control Centre's status items: they live at window layer
+/// 25 and are present-but-not-on-screen while a full-screen Space keeps the bar hidden,
+/// then become on-screen the moment it is revealed (measured: 0 on-screen items hidden vs
+/// 13 revealed). Their window bounds also tell us *which* display was revealed.
+///
+/// That signal trails the animation by a poll interval, and the Apple glyph is drawn on
+/// the first frame of it — so `includingPointer` also counts a pointer resting on a
+/// screen's top edge as revealed, which lets the mask land before the bar slides in.
+/// Pass false when the question is whether the bar is *drawn* right now, e.g. before
+/// sampling its colour.
+func revealedMenuBarScreens(in fullScreens: [NSRect], includingPointer: Bool = true) -> [NSRect] {
+    guard !fullScreens.isEmpty else { return [] }
+
+    let pointer = NSEvent.mouseLocation
+    var revealed = includingPointer ? fullScreens.filter { frame in
+        pointer.y >= frame.maxY - 2 && pointer.x >= frame.minX && pointer.x < frame.maxX
+    } : []
+
+    let controlCentrePIDs = Set(NSRunningApplication
+        .runningApplications(withBundleIdentifier: "com.apple.controlcenter")
+        .map { Int($0.processIdentifier) })
+    guard !controlCentrePIDs.isEmpty else { return revealed }
+    if revealed.count == fullScreens.count { return revealed }
+
+    let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+        as? [[String: Any]] ?? []
+    let statusItemTops = windows.compactMap { window -> CGPoint? in
+        guard (window[kCGWindowLayer as String] as? Int) == 25,
+              let pid = window[kCGWindowOwnerPID as String] as? Int,
+              controlCentrePIDs.contains(pid),
+              let bounds = window[kCGWindowBounds as String] as? [String: Any],
+              let x = (bounds["X"] as? NSNumber)?.doubleValue,
+              let y = (bounds["Y"] as? NSNumber)?.doubleValue
+        else { return nil }
+        return CGPoint(x: x, y: y)
+    }
+    guard !statusItemTops.isEmpty else { return revealed }
+
+    // CGWindowList geometry is measured from the top-left corner of the arrangement,
+    // NSScreen from the bottom-left of the main screen — so a screen's top edge has to be
+    // flipped. X is the same in both spaces (both start at the main display's left edge
+    // and go negative to the left of it).
+    let arrangementTop = NSScreen.screens.map { $0.frame.maxY }.max() ?? 0
+    for frame in fullScreens where !revealed.contains(frame) {
+        let top = arrangementTop - frame.maxY
+        if statusItemTops.contains(where: { abs($0.y - top) < 2 && $0.x >= frame.minX && $0.x < frame.maxX }) {
+            revealed.append(frame)
+        }
+    }
+    return revealed
 }
 
 func getOrigin(of screen: NSScreen, in screens: [NSScreen]) -> NSPoint {
