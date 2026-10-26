@@ -50,20 +50,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         th.async {
-            var tick = 0
             while true {
                 // The menu bar slides in over a full-screen Space in a fraction of a
-                // second, and the Apple glyph is drawn from the first frame. The pointer
-                // check is cheap, the CGS / window-list queries in `getFullScreens()` are
-                // not, so split them: a pointer-only check every 25 ms (about one frame,
-                // the finest this can usefully be) puts the mask up with the bar, and the
-                // full Space / status-item query runs every 0.2 s.
+                // second, and the Apple glyph is drawn from the first frame. Every signal
+                // that the bar is up is cheap (measured: about 0.8 ms for the whole pass
+                // when a display is full screen, and a couple of early returns when none
+                // is), so run the full check at 25 ms — about one frame, the finest this
+                // can usefully be. A slower pass is not enough: while a Space is being
+                // swiped, the outgoing full-screen Space keeps reporting type 4 for a
+                // second or more, and the *only* evidence the bar is drawn is the Control
+                // Centre status items, which appear on the first frames of the switch.
                 Thread.sleep(forTimeInterval: 0.025)
-                tick += 1
-                let fullCheck = tick % 8 == 0
-                DispatchQueue.main.async {
-                    if fullCheck { getFullScreens() } else { updatePointerReveal() }
-                }
+                DispatchQueue.main.async { getFullScreens() }
             }
         }
         th.async {
@@ -191,6 +189,15 @@ func requestScreenCaptureAccess() -> Bool {
     return CGRequestScreenCaptureAccess()
 }
 
+/// `screencapture` is a process launch plus a window-server round trip (measured: 100–250
+/// ms) and `refeshMask()` is called at the exact moment the mask has to become visible —
+/// when the menu bar starts to slide in over a full-screen Space, including while a Space
+/// is being swiped. Run on the main thread, the capture stalled the SwiftUI update that
+/// shows the mask for as long as the capture took, and the system Apple glyph stayed
+/// visible underneath for that whole time. Captures therefore run on this serial queue;
+/// only the finished masks are handed back to the main thread.
+private let maskCaptureQueue = DispatchQueue(label: "logoer.mask-capture", qos: .userInitiated)
+
 func refeshMask() {
     @AppStorage("maskMode") var maskMode: Bool = false
     if !maskMode { return }
@@ -199,45 +206,59 @@ func refeshMask() {
     // grant, fall back to the last captured mask on disk — it is only wrong after a
     // light/dark switch, which is better than an uncovered system Apple logo.
     let canCapture = hasScreenCaptureAccess()
-    var masks = [maskImage]()
     let screens = NSScreen.screens
+    let fullScreens = dataModel.fullScreens
     // Only a *drawn* menu bar is worth sampling. `revealedMenuBars` deliberately treats a
     // pointer at the top edge as revealed so the mask is already there when the bar slides
     // in; for a capture that is too early — the sample point still shows the app's own
     // content, and painting that over the logo leaves a solid block. Ask for the slower,
     // unambiguous signal instead: status items actually on screen.
-    let drawnMenuBars = revealedMenuBarScreens(in: dataModel.fullScreens, includingPointer: false)
+    let drawnMenuBars = revealedMenuBarScreens(in: fullScreens, includingPointer: false)
+
+    // Everything AppKit has to answer is resolved here, on the main thread; the queue only
+    // gets plain values.
+    var jobs = [(url: URL, origin: NSPoint, capture: Bool)]()
     for index in screens.indices {
         let screen = screens[index]
-        let maskURL = getMaskURL(index: index)
         // While a full-screen Space keeps the menu bar hidden there is nothing to cover,
         // and what sits at the sample point is the app's own content — capturing now
         // would overwrite a good mask with, say, the terminal's background colour. Keep
         // the last real menu-bar mask instead; it is refreshed when the bar comes back.
-        let hiddenMenuBar = dataModel.fullScreens.contains(screen.frame)
+        let hiddenMenuBar = fullScreens.contains(screen.frame)
             && !drawnMenuBars.contains(screen.frame)
-        if canCapture && !hiddenMenuBar {
+        jobs.append((getMaskURL(index: index),
+                     getOrigin(of: screen, in: screens),
+                     canCapture && !hiddenMenuBar))
+    }
+
+    maskCaptureQueue.async {
+        // Serial queue: results cannot overtake each other, so the masks published last
+        // are the ones captured last.
+        for job in jobs where job.capture {
             // Sample 10pt inboard of the screen's top-left. The exact corner is where the
             // display rounds off its corners: on the secondary display it reads the black
             // behind the rounding (28,28,28) instead of the menu bar (38,41,43), and the
             // mask then paints a visibly wrong rectangle. 10pt is inside every menu bar
             // and outside every corner radius.
-            let origin = getOrigin(of: screen, in: screens)
-            let sample = CGPoint(x: origin.x + 10, y: origin.y + 10)
-            _ = process(path: "/usr/sbin/screencapture", arguments: ["-x", "-R", "\(Int(sample.x)),\(Int(sample.y)),4,4", maskURL.path])
+            let sample = CGPoint(x: job.origin.x + 10, y: job.origin.y + 10)
+            _ = process(path: "/usr/sbin/screencapture", arguments: ["-x", "-R", "\(Int(sample.x)),\(Int(sample.y)),4,4", job.url.path])
         }
-        if let image = NSImage(contentsOf: maskURL) { masks.append(maskImage(url: maskURL, image: image)) }
+        var masks = [maskImage]()
+        for job in jobs {
+            if let image = NSImage(contentsOf: job.url) { masks.append(maskImage(url: job.url, image: image)) }
+        }
+        DispatchQueue.main.async { dataModel.masks = masks }
     }
-    dataModel.masks = masks
 }
 
 /// Styles drawn on the Apple silhouette. macOS keeps drawing its own Apple menu glyph
 /// behind our overlay window; an Apple-shaped style hides it by painting over the same
-/// shape in the same place. Any other style (penguin, window, emoji, app icon, custom
-/// image) leaves the system Apple visible in the gaps — that is why "Battery: Linux"
-/// showed a penguin *and* an Apple. Auto-Mask is what paints the menu-bar colour over
-/// the system glyph, so the non-Apple styles need it enabled to render correctly.
-let appleShapedLogoStyles: Set<String> = ["rainbow", "chrome", "glass", "aqua", "battery", "color"]
+/// shape in the same place. Any other style (penguin, window, Android, Ubuntu, Chrome,
+/// Raspberry Pi, FreeBSD, emoji, app icon, custom image) leaves the system Apple visible
+/// in the gaps — that is why "Battery: Linux" showed a penguin *and* an Apple. Auto-Mask
+/// is what paints the menu-bar colour over the system glyph, so the non-Apple styles need
+/// it enabled to render correctly.
+let appleShapedLogoStyles: Set<String> = ["rainbow", "chrome", "glass", "aqua", "battery", "battery_apple", "color"]
 
 /// Enable Auto-Mask and ask for the Screen Recording permission it needs, once, at the
 /// moment the user picks a style that cannot work without it. Called from the picker
@@ -365,30 +386,6 @@ func getFullScreens() {
         // stale or missing — take a fresh one now that the menu bar is really there.
         if barAppeared { refreshMaskOnceMenuBarLands(attemptsLeft: 8) }
     }
-}
-
-/// Pointer-only half of `revealedMenuBarScreens`, cheap enough to run many times a second.
-///
-/// The bar starts sliding in within a frame of the pointer hitting the top edge, and the
-/// Apple is already drawn behind it — polling the Space and window list at that rate would
-/// be wasteful, so this tick only looks at the pointer. Entries are added here and removed
-/// by the full `getFullScreens()` pass, which still owns the authoritative answer.
-private func updatePointerReveal() {
-    guard !dataModel.fullScreens.isEmpty else { return }
-    let pointer = NSEvent.mouseLocation
-    let atEdge = dataModel.fullScreens.filter { frame in
-        pointer.y >= frame.maxY - 2 && pointer.x >= frame.minX && pointer.x < frame.maxX
-    }
-    guard !atEdge.isEmpty else { return }
-    var added = false
-    for frame in atEdge where !dataModel.revealedMenuBars.contains(frame) {
-        dataModel.revealedMenuBars.append(frame)
-        added = true
-    }
-    // The mask on disk was skipped while the bar was hidden, so once the bar is really
-    // drawn it has to be captured again — the full pass would normally trigger this, but
-    // it now sees the screen as already revealed.
-    if added { refreshMaskOnceMenuBarLands(attemptsLeft: 8) }
 }
 
 /// Captures are only valid once the menu bar is actually drawn: the reveal animation

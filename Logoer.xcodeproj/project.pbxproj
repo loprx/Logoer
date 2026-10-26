@@ -19,6 +19,18 @@
 		182AC4E42C49953300CF1790 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 182AC4E22C49953300CF1790 /* Localizable.strings */; };
 		1A2B3C4D5E6F708192A3B403 /* battery_tux.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B401 /* battery_tux.svg */; };
 		1A2B3C4D5E6F708192A3B404 /* battery_win.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B402 /* battery_win.svg */; };
+		1A2B3C4D5E6F708192A3C4FF /* battery_apple.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3C5FF /* battery_apple.svg */; };
+		1A2B3C4D5E6F708192A3C700 /* battery_apple_o.svg in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3C6FF /* battery_apple_o.svg */; };
+		5FCD12721CF94EE89D62F38F /* battery_android.svg in Resources */ = {isa = PBXBuildFile; fileRef = FB86E7DBC1D54ADABB6FCA61 /* battery_android.svg */; };
+		045365E5EF9541A197E6600C /* battery_android_o.svg in Resources */ = {isa = PBXBuildFile; fileRef = 44FA8117EB6E4CD8B9D11DE7 /* battery_android_o.svg */; };
+		5FF90C6E985D4FAA86A2186F /* battery_chromeos.svg in Resources */ = {isa = PBXBuildFile; fileRef = 3A2027D183D34F1680026DC1 /* battery_chromeos.svg */; };
+		492164E4D3434F229ED2ED8B /* battery_chromeos_o.svg in Resources */ = {isa = PBXBuildFile; fileRef = 657F22DF5CF3491F9E434EEE /* battery_chromeos_o.svg */; };
+		F3D7CB0A37864C55B3E95752 /* battery_freebsd.svg in Resources */ = {isa = PBXBuildFile; fileRef = 180C53D3183B49E2AA8FA539 /* battery_freebsd.svg */; };
+		F463C8735E6F403283874902 /* battery_freebsd_o.svg in Resources */ = {isa = PBXBuildFile; fileRef = 21C08091736949A5924BEFBF /* battery_freebsd_o.svg */; };
+		38B9C4C3614242E08F83BB9E /* battery_rpi.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6E75605CCE9B4331A65D3B2D /* battery_rpi.svg */; };
+		24B1BBA53E9E40F983CCDC12 /* battery_rpi_o.svg in Resources */ = {isa = PBXBuildFile; fileRef = DEA029A4DBC04A888D6347D1 /* battery_rpi_o.svg */; };
+		39AE15FDCB714D2B8BD92C2C /* battery_ubuntu.svg in Resources */ = {isa = PBXBuildFile; fileRef = EA294E0E79BC465C8B24B22F /* battery_ubuntu.svg */; };
+		C086C8EA306443A39F30A3A8 /* battery_ubuntu_o.svg in Resources */ = {isa = PBXBuildFile; fileRef = E998C97310B744DE8005E930 /* battery_ubuntu_o.svg */; };
 		182AC4E82C499CA900CF1790 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 182AC4E72C499CA900CF1790 /* Sparkle */; };
 		182AC4EB2C499D5100CF1790 /* Sparkle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182AC4EA2C499D5100CF1790 /* Sparkle.swift */; };
 		18747AD72C4FF36C006FC3B5 /* SDWebImageSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 18747AD62C4FF36C006FC3B5 /* SDWebImageSwiftUI */; };
@@ -55,6 +67,18 @@
 		182AC4E52C49954700CF1790 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		1A2B3C4D5E6F708192A3B401 /* battery_tux.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_tux.svg; sourceTree = "<group>"; };
 		1A2B3C4D5E6F708192A3B402 /* battery_win.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_win.svg; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3C5FF /* battery_apple.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_apple.svg; sourceTree = "<group>"; };
+		1A2B3C4D5E6F708192A3C6FF /* battery_apple_o.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_apple_o.svg; sourceTree = "<group>"; };
+		FB86E7DBC1D54ADABB6FCA61 /* battery_android.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_android.svg; sourceTree = "<group>"; };
+		44FA8117EB6E4CD8B9D11DE7 /* battery_android_o.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_android_o.svg; sourceTree = "<group>"; };
+		3A2027D183D34F1680026DC1 /* battery_chromeos.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_chromeos.svg; sourceTree = "<group>"; };
+		657F22DF5CF3491F9E434EEE /* battery_chromeos_o.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_chromeos_o.svg; sourceTree = "<group>"; };
+		180C53D3183B49E2AA8FA539 /* battery_freebsd.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_freebsd.svg; sourceTree = "<group>"; };
+		21C08091736949A5924BEFBF /* battery_freebsd_o.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_freebsd_o.svg; sourceTree = "<group>"; };
+		6E75605CCE9B4331A65D3B2D /* battery_rpi.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_rpi.svg; sourceTree = "<group>"; };
+		DEA029A4DBC04A888D6347D1 /* battery_rpi_o.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_rpi_o.svg; sourceTree = "<group>"; };
+		EA294E0E79BC465C8B24B22F /* battery_ubuntu.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_ubuntu.svg; sourceTree = "<group>"; };
+		E998C97310B744DE8005E930 /* battery_ubuntu_o.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Resources/battery_ubuntu_o.svg; sourceTree = "<group>"; };
 		182AC4E92C499CC400CF1790 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		182AC4EA2C499D5100CF1790 /* Sparkle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sparkle.swift; sourceTree = "<group>"; };
 		18E77B932C5E9913008E1326 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
@@ -112,6 +136,18 @@
 				182AC4C02C49611100CF1790 /* Assets.xcassets */,
 				1A2B3C4D5E6F708192A3B401 /* battery_tux.svg */,
 				1A2B3C4D5E6F708192A3B402 /* battery_win.svg */,
+				1A2B3C4D5E6F708192A3C5FF /* battery_apple.svg */,
+				1A2B3C4D5E6F708192A3C6FF /* battery_apple_o.svg */,
+				FB86E7DBC1D54ADABB6FCA61 /* battery_android.svg */,
+				44FA8117EB6E4CD8B9D11DE7 /* battery_android_o.svg */,
+				3A2027D183D34F1680026DC1 /* battery_chromeos.svg */,
+				657F22DF5CF3491F9E434EEE /* battery_chromeos_o.svg */,
+				180C53D3183B49E2AA8FA539 /* battery_freebsd.svg */,
+				21C08091736949A5924BEFBF /* battery_freebsd_o.svg */,
+				6E75605CCE9B4331A65D3B2D /* battery_rpi.svg */,
+				DEA029A4DBC04A888D6347D1 /* battery_rpi_o.svg */,
+				EA294E0E79BC465C8B24B22F /* battery_ubuntu.svg */,
+				E998C97310B744DE8005E930 /* battery_ubuntu_o.svg */,
 				182AC4E22C49953300CF1790 /* Localizable.strings */,
 				182AC4C52C49611100CF1790 /* Logoer.entitlements */,
 				182AC4C22C49611100CF1790 /* Preview Content */,
@@ -232,6 +268,18 @@
 				182AC4C12C49611100CF1790 /* Assets.xcassets in Resources */,
 				1A2B3C4D5E6F708192A3B403 /* battery_tux.svg in Resources */,
 				1A2B3C4D5E6F708192A3B404 /* battery_win.svg in Resources */,
+				1A2B3C4D5E6F708192A3C4FF /* battery_apple.svg in Resources */,
+				1A2B3C4D5E6F708192A3C700 /* battery_apple_o.svg in Resources */,
+				5FCD12721CF94EE89D62F38F /* battery_android.svg in Resources */,
+				045365E5EF9541A197E6600C /* battery_android_o.svg in Resources */,
+				5FF90C6E985D4FAA86A2186F /* battery_chromeos.svg in Resources */,
+				492164E4D3434F229ED2ED8B /* battery_chromeos_o.svg in Resources */,
+				F3D7CB0A37864C55B3E95752 /* battery_freebsd.svg in Resources */,
+				F463C8735E6F403283874902 /* battery_freebsd_o.svg in Resources */,
+				38B9C4C3614242E08F83BB9E /* battery_rpi.svg in Resources */,
+				24B1BBA53E9E40F983CCDC12 /* battery_rpi_o.svg in Resources */,
+				39AE15FDCB714D2B8BD92C2C /* battery_ubuntu.svg in Resources */,
+				C086C8EA306443A39F30A3A8 /* battery_ubuntu_o.svg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

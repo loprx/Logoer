@@ -49,6 +49,12 @@ struct SettingsView: View {
                     Text("*Battery Indicator").tag("battery")
                     Text("*Battery: Linux").tag("battery_tux")
                     Text("*Battery: Windows").tag("battery_win")
+                    Text("*Battery: Android").tag("battery_android")
+                    Text("*Battery: Ubuntu").tag("battery_ubuntu")
+                    Text("*Battery: ChromeOS").tag("battery_chromeos")
+                    Text("*Battery: Raspberry Pi").tag("battery_rpi")
+                    Text("*Battery: FreeBSD").tag("battery_freebsd")
+                    Text("*Battery: Apple").tag("battery_apple")
                     Text("*Custom Color").tag("color")
                     Text("*Custom Emoji").tag("emoji")
                     Text("*Custom Image").tag("custom")
@@ -63,7 +69,7 @@ struct SettingsView: View {
                 }
                 if logoStyle == "color" {
                     ColorPicker("", selection: $userColor)
-                } else if logoStyle == "battery" || logoStyle == "battery_tux" || logoStyle == "battery_win" {
+                } else if logoStyle.hasPrefix("battery") {
                     ColorPicker("Background:", selection: $batteryColor)
                 } else if logoStyle == "appicon" {
                     Picker("Stroke:", selection: $iconStroke) {

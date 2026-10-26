@@ -17,6 +17,12 @@
 "*Battery Indicator" = "*电量指示器";
 "*Battery: Linux" = "*电量指示器 (Linux)";
 "*Battery: Windows" = "*电量指示器 (Windows)";
+"*Battery: Android" = "*电量指示器 (Android)";
+"*Battery: Ubuntu" = "*电量指示器 (Ubuntu)";
+"*Battery: ChromeOS" = "*电量指示器 (ChromeOS)";
+"*Battery: Raspberry Pi" = "*电量指示器 (树莓派)";
+"*Battery: FreeBSD" = "*电量指示器 (FreeBSD)";
+"*Battery: Apple" = "*电量指示器 (Apple)";
 "*Custom Color" = "*自定义颜色";
 "*Custom Emoji" = "*自定义 Emoji";
 "*Custom Image" = "*自定义图像";

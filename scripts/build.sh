@@ -173,14 +173,23 @@ HELPER_ENTITLEMENTS="$(mktemp -t logoer-helper-entitlements)"
 cp "$ROOT/LogoerHelper/LogoerHelper.entitlements" "$HELPER_ENTITLEMENTS"
 
 info "codesigning with identity '$CODESIGN_IDENTITY'"
+# Ad-hoc signatures get a designated requirement built from the cdhash, and the cdhash
+# changes on every rebuild. macOS stores that requirement in the TCC grant for Screen
+# Recording, so each rebuild silently invalidates Auto-Mask's permission and the user has
+# to toggle it again. Pin the app's requirement to its bundle identifier instead: that is
+# the same for every build, so the grant survives. Only the app needs it — the nested
+# helper and Sparkle framework have their own identifiers, and a requirement naming the
+# app's identifier would not match them.
+REQUIREMENT_ARGS=()
 if [ "$CODESIGN_IDENTITY" = "-" ]; then
     echo "   (ad-hoc: Sparkle auto-update will not install into this build)"
+    REQUIREMENT_ARGS=(-r="designated => identifier \"$BUNDLE_ID\"")
 fi
 codesign --force --sign "$CODESIGN_IDENTITY" --entitlements "$HELPER_ENTITLEMENTS" \
     --identifier "$HELPER_ID" "$HELPER"
 codesign --force --deep --sign "$CODESIGN_IDENTITY" "$OUT/Contents/Frameworks/Sparkle.framework"
 codesign --force --deep --sign "$CODESIGN_IDENTITY" --entitlements "$ENTITLEMENTS" \
-    --identifier "$BUNDLE_ID" "$OUT"
+    --identifier "$BUNDLE_ID" ${REQUIREMENT_ARGS[@]+"${REQUIREMENT_ARGS[@]}"} "$OUT"
 rm -f "$ENTITLEMENTS" "$HELPER_ENTITLEMENTS"
 
 codesign --verify --deep --strict --verbose=1 "$OUT" 2>&1 | tail -3

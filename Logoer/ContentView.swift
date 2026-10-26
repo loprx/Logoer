@@ -95,62 +95,14 @@ struct ContentView: View {
                             .shadow(color: Color.black.opacity(shadowON ? 0.3 : 0.0), radius: 1.5, y: 1.5)
                     }
                 } else if logoStyle == "battery" {
-                    ZStack {
-                        if #available(macOS 14, *) {
-                            ZStack {
-                                Image(systemName: "apple.logo")
-                                    .font(.system(size: 16.5, weight: .black))
-                                    .foregroundColor(batteryColor)
-                                    .shadow(color: Color.black.opacity(shadowON ? 0.3 : 0.0), radius: 1.5, y: 1.5)
-                                Image(systemName: "apple.logo")
-                                    .font(.system(size: 16.5, weight: .black))
-                                    .foregroundColor(batteryColor)
-                                    .offset(x: -0.1)
-                            }.frame(width: 16, height: 17)
-                        } else {
-                            logoImage("Apple", template: true)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 17)
-                                .foregroundColor(batteryColor)
-                                .shadow(color: Color.black.opacity(shadowON ? 0.3 : 0.0), radius: 1.5, y: 1.5)
-                        }
-                        ZStack {
-                            ZStack {
-                                if #available(macOS 14, *) {
-                                    logoImage("Apple_Inner_old", template: true)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .foregroundColor(logoColor(model.battery.levelColor))
-                                        .frame(width: 16, height: 17)
-                                        .offset(x: 0.3)
-                                }
-                                logoImage("Apple_Inner_old", template: true)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .foregroundColor(logoColor(model.battery.levelColor))
-                                    .frame(width: 16, height: 17)
-                                    
-                            }
-                            .mask (
-                                VStack {
-                                    Spacer()
-                                    Rectangle()
-                                        .frame(height: model.battery.batteryLevel >= 20 ? max(4, CGFloat(model.battery.batteryLevel) / 100 * 14) : 14)
-                                }
-                            )
-                            if model.battery.acPowered {
-                                Image(systemName: "bolt.fill")
-                                    .font(.system(size: 7.5, weight: .black))
-                                    .frame(width: 16, height: 17)
-                                    .foregroundColor(.white)
-                                    .offset(y: aboveSonoma ? 2 : 1.8)
-                                    .shadow(color: .black, radius: 1)
-                            }
-                        }.needOffset(x: 0, y: -0.5)
-                    }.offset(y: aboveSonoma ? -0.5 : 0)
-                    .needOffset(x: -0.5, y: -0.5)
-                } else if logoStyle == "battery_tux" || logoStyle == "battery_win" {
+                    BatteryGlyph(asset: "battery_apple",
+                                 color: batteryColor,
+                                 levelColor: logoColor(model.battery.levelColor),
+                                 level: model.battery.batteryLevel,
+                                 acPowered: model.battery.acPowered,
+                                 shadowON: shadowON,
+                                 appleStyle: true)
+                } else if logoStyle.hasPrefix("battery") {
                     BatteryGlyph(asset: logoStyle,
                                  color: batteryColor,
                                  levelColor: logoColor(model.battery.levelColor),
@@ -255,11 +207,19 @@ struct ContentView: View {
     }
 }
 
-// Battery indicator over a custom silhouette (Linux Tux, Windows 10 window).
-// The outline is a filled Rectangle masked by the shape rather than
-// `Image(asset).foregroundColor(...)`: `foregroundColor` does not tint an SVG
-// that is not template-rendered (a loose resource copied into Resources), and the
-// mask approach gives the same result for either storage.
+// Battery indicator over a silhouette (Apple, Linux Tux, Windows 10 window, Android,
+// Ubuntu, ChromeOS, Raspberry Pi, FreeBSD). The outline is a filled Rectangle masked by
+// the shape rather than `Image(asset).foregroundColor(...)`: `foregroundColor` does not
+// tint an SVG that is not template-rendered (a loose resource copied into Resources),
+// and the mask approach gives the same result for either storage.
+//
+// Charging and non-charging are separate artwork:
+//   * on AC  — solid silhouette (the `battery_<x>.svg` blob) filled with the background
+//              colour, filled up to the level colour, plus a bolt on top;
+//   * on battery — outline-only stroke (`battery_<x>_o.svg`), hollow so the terminal's
+//              background shows through the body, filled up to the level colour.
+// `appleStyle` keeps the pre-existing Apple rendering (hard-coded at 16×17 with the
+// +0.3pt inner offset) instead of the shared 16×16 frame.
 struct BatteryGlyph: View {
     let asset: String
     let color: Color
@@ -267,19 +227,31 @@ struct BatteryGlyph: View {
     let level: Int
     let acPowered: Bool
     let shadowON: Bool
+    var appleStyle = false
 
     private var fillHeight: CGFloat {
         level >= 20 ? max(4, CGFloat(level) / 100 * 14) : 14
     }
 
+    private var shapeAsset: String {
+        // Prefer the outline variant when unplugged; fall back to the solid if the
+        // outline resource is missing (e.g. an older build's assets).
+        if !acPowered, NSImage(named: asset + "_o") != nil { return asset + "_o" }
+        return asset
+    }
+
+    private var shape: some View {
+        logoImage(shapeAsset).resizable().scaledToFit()
+    }
+
     var body: some View {
         ZStack {
             Rectangle().fill(color)
-                .mask(logoImage(asset).resizable().scaledToFit())
+                .mask(shape)
                 .shadow(color: Color.black.opacity(shadowON ? 0.3 : 0.0), radius: 1.5, y: 1.5)
             Rectangle().fill(levelColor)
                 .mask(
-                    logoImage(asset).resizable().scaledToFit()
+                    shape
                         .mask(
                             VStack(spacing: 0) {
                                 Spacer(minLength: 0)
@@ -287,6 +259,10 @@ struct BatteryGlyph: View {
                             }
                         )
                 )
+                // The Apple silhouette has always drawn its inner level fill 0.3pt to
+                // the right while on AC — preserve that slight highlight offset.
+                .offset(x: (appleStyle && acPowered) ? 0.3 : 0)
+                .opacity(acPowered ? 1 : 0)
             if acPowered {
                 Image(systemName: "bolt.fill")
                     .font(.system(size: 7.5, weight: .black))
@@ -296,7 +272,7 @@ struct BatteryGlyph: View {
                     .shadow(color: .black, radius: 1)
             }
         }
-        .frame(width: 16, height: 16)
+        .frame(width: 16, height: appleStyle ? 17 : 16)
         .offset(y: aboveSonoma ? -0.5 : 0)
         .needOffset(x: -0.5, y: -0.5)
     }
