@@ -20,6 +20,27 @@
         <title>Logoer</title>
         <language>en</language>
         <item>
+            <title>v0.4.0</title>
+            <pubDate>Mon, 26 Oct 2026 20:30:00 +0800</pubDate>
+            <sparkle:version>040</sparkle:version>
+            <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[
+                  <style>ul{margin-top: 0;margin-bottom: 7;padding-left: 18;}</style><ul>
+                  <li>新增 Android、Ubuntu、ChromeOS、树莓派、FreeBSD、Apple 六款电量指示器图标</li>
+                  <li>所有电量图标改为插电实心+闪电、用电池时描边轮廓</li>
+                  <li>遮罩截图移至后台队列, 菜单栏唤出时遮罩出现更快、不再卡顿</li>
+                  <li>修复重建后屏幕录制权限(自动遮蔽)失效的问题</li>
+                  </ul><ul>
+                  <li>Added Android, Ubuntu, ChromeOS, Raspberry Pi, FreeBSD and Apple battery indicator styles</li>
+                  <li>Battery icons now show a solid shape + bolt on AC and an outline on battery power</li>
+                  <li>Mask capture moved off the main thread: the mask appears faster and no longer stutters</li>
+                  <li>Screen Recording permission (Auto-Mask) survives app rebuilds</li>
+                  </ul>
+            ]]></description>
+            <enclosure url="https://github.com/loprx/Logoer/releases/download/0.4.0/Logoer-v0.4.0-macos-arm64.zip" length="1731468" type="application/octet-stream" sparkle:edSignature="3CjWumQpr/3VZHfZAQ88SNrf9y9jwwLnw8cJecF0R6WqG+MN/9WFNmNgQudRS4w4F9wJ9BJ9v3ur5nLBE/dtBg=="/>
+        </item>
+        <item>
             <title>v0.3.1</title>
             <pubDate>Sat, 25 Oct 2026 08:05:00 +0800</pubDate>
             <sparkle:version>031</sparkle:version>
